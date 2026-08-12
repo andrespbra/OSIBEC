@@ -14,6 +14,7 @@ import { FinancialView } from './components/financial/FinancialView';
 import { ReportsView } from './components/reports/ReportsView';
 import { AutomationsView } from './components/automations/AutomationsView';
 import { AuditLogsView } from './components/audit/AuditLogsView';
+import { UsersManagementView } from './components/users/UsersManagementView';
 import { PermissionsView } from './components/settings/PermissionsView';
 import { SupabaseVercelConfigView } from './components/settings/SupabaseVercelConfigView';
 import { NewServiceModal } from './components/service/NewServiceModal';
@@ -53,6 +54,8 @@ const MainContent: React.FC = () => {
         return <ReportsView />;
       case 'automations':
         return <AutomationsView />;
+      case 'users':
+        return <UsersManagementView />;
       case 'audit':
         return <AuditLogsView />;
       case 'permissions':

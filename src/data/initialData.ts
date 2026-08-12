@@ -1,4 +1,4 @@
-import { Client, Driver, Vehicle, ServiceOrder, FinancialRecord, AuditLog, AutomationLog } from '../types';
+import { Client, Driver, Vehicle, ServiceOrder, FinancialRecord, AuditLog, AutomationLog, User } from '../types';
 
 export const INITIAL_CLIENTS: Client[] = [
   {
@@ -783,5 +783,74 @@ export const INITIAL_AUTOMATIONS: AutomationLog[] = [
     status: 'enviado',
     timestamp: '14:46',
     osNumber: 'OS-2026-1002'
+  }
+];
+
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'usr-admin',
+    username: 'admin',
+    password: '123',
+    name: 'André Rocha (CEO Admin)',
+    role: 'admin',
+    phone: '(11) 98888-7777',
+    companyName: 'IBEC FLOW Matriz SP',
+    active: true,
+    createdAt: '2026-01-01T08:00:00Z'
+  },
+  {
+    id: 'usr-operador',
+    username: 'operador',
+    password: '123',
+    name: 'Fernanda Lima',
+    role: 'operador',
+    phone: '(11) 98765-4321',
+    companyName: 'Despacho & Logística SP',
+    active: true,
+    createdAt: '2026-01-05T09:00:00Z'
+  },
+  {
+    id: 'usr-financeiro',
+    username: 'financeiro',
+    password: '123',
+    name: 'Roberto Souza',
+    role: 'financeiro',
+    phone: '(11) 97654-3210',
+    companyName: 'Faturamento IBEC',
+    active: true,
+    createdAt: '2026-01-10T10:00:00Z'
+  },
+  {
+    id: 'usr-motorista',
+    username: 'motorista',
+    password: '123',
+    name: 'Marcos Vinicius',
+    role: 'motorista',
+    phone: '(11) 99876-5432',
+    driverId: 'drv-1',
+    active: true,
+    createdAt: '2026-01-12T11:00:00Z'
+  },
+  {
+    id: 'usr-supervisor',
+    username: 'supervisor',
+    password: '123',
+    name: 'Juliana Costa',
+    role: 'supervisor',
+    phone: '(11) 95555-4444',
+    companyName: 'Supervisão Operacional',
+    active: true,
+    createdAt: '2026-01-15T12:00:00Z'
+  },
+  {
+    id: 'usr-cliente',
+    username: 'cliente',
+    password: '123',
+    name: 'TechLog Express',
+    role: 'cliente',
+    phone: '(11) 3456-7890',
+    clientId: 'cli-1',
+    active: true,
+    createdAt: '2026-01-15T14:00:00Z'
   }
 ];

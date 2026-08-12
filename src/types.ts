@@ -47,14 +47,18 @@ export type VehicleStatus =
 
 export interface User {
   id: string;
+  username: string;
+  password?: string;
   name: string;
-  email: string;
-  avatar: string;
+  email?: string;
+  avatar?: string;
   role: UserRole;
-  phone: string;
+  phone?: string;
   companyName?: string;
   clientId?: string;
   driverId?: string;
+  active?: boolean;
+  createdAt?: string;
 }
 
 export interface Client {

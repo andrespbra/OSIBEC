@@ -19,6 +19,7 @@ export const Sidebar: React.FC = () => {
     { id: 'financial', label: 'Financeiro & DRE', icon: DollarSign, roles: ['admin', 'financeiro'] },
     { id: 'reports', label: 'Relatórios & BI', icon: BarChart3, roles: ['admin', 'financeiro', 'supervisor'] },
     { id: 'automations', label: 'Automações & WhatsApp', icon: Bot, roles: ['admin', 'operacional'] },
+    { id: 'users', label: 'Funcionários & Perfis', icon: Users, roles: ['admin'] },
     { id: 'audit', label: 'Auditoria & Logs', icon: ShieldCheck, roles: ['admin'] },
     { id: 'permissions', label: 'Permissões', icon: KeyRound, roles: ['admin'] },
     { id: 'supabase-vercel', label: 'Supabase & Vercel', icon: Database, roles: ['admin'] },

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Zap, Plus, Sun, Moon, Bell, Search, Shield, UserCheck, 
-  Truck, DollarSign, Activity, Users, ChevronDown, CheckCircle2, AlertTriangle, X
+  Truck, DollarSign, Activity, Users, ChevronDown, CheckCircle2, AlertTriangle, X, LogOut 
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
 export const Header: React.FC = () => {
   const { 
     currentUser, setRole, theme, toggleTheme, 
-    setIsNewServiceModalOpen, services, drivers, toasts, removeToast 
+    setIsNewServiceModalOpen, services, drivers, toasts, removeToast, logout 
   } = useApp();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -185,17 +185,22 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* User Profile Avatar */}
+          {/* User Profile Avatar & Logout */}
           <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-zinc-200 dark:border-zinc-800">
-            <img 
-              src={currentUser.avatar} 
-              alt={currentUser.name}
-              className="w-8 h-8 rounded-full ring-2 ring-purple-500/30 object-cover" 
-            />
+            <div className="w-8 h-8 rounded-full bg-purple-600/20 text-purple-300 font-bold flex items-center justify-center border border-purple-500/30 text-xs">
+              {currentUser.name.substring(0, 2).toUpperCase()}
+            </div>
             <div className="hidden xl:block text-left">
               <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{currentUser.name}</p>
-              <p className="text-[10px] text-zinc-400 uppercase font-semibold">{currentUser.role}</p>
+              <p className="text-[10px] text-zinc-400 uppercase font-semibold">@{currentUser.username || currentUser.role}</p>
             </div>
+            <button
+              onClick={logout}
+              title="Sair do Sistema"
+              className="p-1.5 rounded-xl hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors ml-1 cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
 
         </div>

@@ -5,10 +5,11 @@ import {
 } from '../types';
 import { 
   INITIAL_CLIENTS, INITIAL_DRIVERS, INITIAL_VEHICLES, 
-  INITIAL_SERVICES, INITIAL_FINANCIAL, INITIAL_AUDIT, INITIAL_AUTOMATIONS 
+  INITIAL_SERVICES, INITIAL_FINANCIAL, INITIAL_AUDIT, INITIAL_AUTOMATIONS,
+  INITIAL_USERS
 } from '../data/initialData';
 
-import { isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 interface Toast {
   id: string;
@@ -18,7 +19,15 @@ interface Toast {
 }
 
 interface AppContextType {
-  currentUser: User;
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  users: User[];
+  loginWithUsername: (username: string, password: string) => boolean;
+  logout: () => void;
+  addUser: (userData: Omit<User, 'id' | 'createdAt'>) => void;
+  updateUser: (userId: string, updatedFields: Partial<User>) => void;
+  deleteUser: (userId: string) => void;
+
   setRole: (role: UserRole) => void;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
@@ -61,14 +70,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
   const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<ServiceOrder | null>(null);
 
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: 'usr-admin',
-    name: 'André Rocha',
-    email: 'andre.rocha@ibecflow.com',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    role: 'admin',
-    phone: '(11) 98888-7777',
-    companyName: 'IBEC FLOW Matriz SP'
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('ibec_system_users');
+    return saved ? JSON.parse(saved) : INITIAL_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('ibec_current_user');
+    return saved ? JSON.parse(saved) : INITIAL_USERS[0];
   });
 
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -108,6 +117,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('ibec_automations');
     return saved ? JSON.parse(saved) : INITIAL_AUTOMATIONS;
   });
+
+  // Sync users & currentUser to local storage
+  useEffect(() => {
+    localStorage.setItem('ibec_system_users', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('ibec_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('ibec_current_user');
+    }
+  }, [currentUser]);
 
   // Sync state to local storage
   useEffect(() => {
@@ -165,7 +187,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setRole = (role: UserRole) => {
-    setCurrentUser(prev => ({ ...prev, role }));
+    if (currentUser) {
+      setCurrentUser({ ...currentUser, role });
+    }
     addToast({
       title: `Modo alterado para ${role.toUpperCase()}`,
       description: `Visualização e permissões adaptadas para o perfil de ${role}.`,
@@ -184,9 +208,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logAudit = (action: string, details: string) => {
     const newLog: AuditLog = {
       id: `aud-${Date.now()}`,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
+      userId: currentUser?.id || 'sys',
+      userName: currentUser?.name || 'Sistema',
+      userRole: currentUser?.role || 'admin',
       action,
       details,
       timestamp: new Date().toISOString(),
@@ -194,6 +218,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       browser: 'IBEC Web App (Cloud Platform)'
     };
     setAuditLogs(prev => [newLog, ...prev]);
+  };
+
+  const loginWithUsername = (usernameInput: string, passwordInput: string): boolean => {
+    const cleanUsername = usernameInput.trim().toLowerCase();
+    const foundUser = users.find(
+      u => u.username.toLowerCase() === cleanUsername && u.password === passwordInput
+    );
+
+    if (foundUser) {
+      if (foundUser.active === false) {
+        addToast({ title: 'Acesso Negado', description: 'Este usuário está desativado pelo Administrador.', type: 'error' });
+        return false;
+      }
+      setCurrentUser(foundUser);
+      logAudit('USER_LOGIN', `Usuário '${foundUser.username}' (${foundUser.name}) realizou login.`);
+      addToast({ title: `Bem-vindo, ${foundUser.name}!`, description: `Perfil ativo: ${foundUser.role.toUpperCase()}`, type: 'success' });
+      return true;
+    }
+
+    addToast({ title: 'Falha no Login', description: 'Nome de usuário ou senha incorretos.', type: 'error' });
+    return false;
+  };
+
+  const logout = () => {
+    if (currentUser) {
+      logAudit('USER_LOGOUT', `Usuário '${currentUser.username}' encerrou a sessão.`);
+    }
+    setCurrentUser(null);
+    addToast({ title: 'Sessão Encerrada', description: 'Você saiu do sistema com segurança.', type: 'info' });
+  };
+
+  const addUser = (userData: Omit<User, 'id' | 'createdAt'>) => {
+    const cleanUsername = userData.username.trim();
+    const exists = users.some(u => u.username.toLowerCase() === cleanUsername.toLowerCase());
+    if (exists) {
+      addToast({ title: 'Usuário Existente', description: `O nome de usuário '${cleanUsername}' já está em uso. Escolha outro.`, type: 'warning' });
+      return;
+    }
+
+    const newUser: User = {
+      ...userData,
+      id: `usr-${Date.now()}`,
+      username: cleanUsername,
+      password: userData.password || '123',
+      createdAt: new Date().toISOString(),
+      active: userData.active !== undefined ? userData.active : true
+    };
+
+    setUsers(prev => [newUser, ...prev]);
+
+    if (supabase) {
+      supabase.from('users').insert([{
+        id: newUser.id,
+        username: newUser.username,
+        password: newUser.password,
+        name: newUser.name,
+        role: newUser.role,
+        phone: newUser.phone,
+        email: newUser.email,
+        company_name: newUser.companyName,
+        client_id: newUser.clientId,
+        driver_id: newUser.driverId,
+        active: newUser.active,
+        created_at: newUser.createdAt
+      }]).then(({ error }) => {
+        if (error) console.log('Supabase sync user insert error:', error.message);
+      });
+    }
+
+    logAudit('USER_CREATE', `Novo funcionário '${newUser.username}' (${newUser.name}) cadastrado pelo admin.`);
+    addToast({ title: 'Funcionário Cadastrado', description: `Usuário '${newUser.username}' criado com sucesso para ${newUser.name}!`, type: 'success' });
+  };
+
+  const updateUser = (userId: string, updatedFields: Partial<User>) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedFields } : u));
+
+    if (supabase) {
+      supabase.from('users').update({
+        name: updatedFields.name,
+        role: updatedFields.role,
+        phone: updatedFields.phone,
+        password: updatedFields.password,
+        active: updatedFields.active,
+        company_name: updatedFields.companyName
+      }).eq('id', userId).then(({ error }) => {
+        if (error) console.log('Supabase user update error:', error.message);
+      });
+    }
+
+    logAudit('USER_UPDATE', `Dados do usuário ID ${userId} atualizados pelo admin.`);
+    addToast({ title: 'Usuário Atualizado', description: 'Perfil e permissões do usuário salvos com sucesso.', type: 'info' });
+  };
+
+  const deleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+
+    if (supabase) {
+      supabase.from('users').delete().eq('id', userId).then(({ error }) => {
+        if (error) console.log('Supabase user delete error:', error.message);
+      });
+    }
+
+    logAudit('USER_DELETE', `Usuário ID ${userId} removido pelo admin.`);
+    addToast({ title: 'Usuário Removido', description: 'O funcionário foi excluído do cadastro.', type: 'warning' });
   };
 
   const triggerAutomations = (osNumber: string, event: string, clientPhone?: string, driverPhone?: string) => {
@@ -472,6 +600,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('ibec_financial');
     localStorage.removeItem('ibec_audit');
     localStorage.removeItem('ibec_automations');
+    localStorage.removeItem('ibec_system_users');
     setClients([]);
     setDrivers([]);
     setVehicles([]);
@@ -479,6 +608,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFinancial([]);
     setAuditLogs([]);
     setAutomationLogs([]);
+    setUsers(INITIAL_USERS);
     addToast({ title: 'Dados Zerados', description: 'Todos os dados de demonstração foram limpos. Seu banco está pronto para novos cadastros realistas!', type: 'warning' });
   };
 
@@ -490,6 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('ibec_financial');
     localStorage.removeItem('ibec_audit');
     localStorage.removeItem('ibec_automations');
+    localStorage.removeItem('ibec_system_users');
     setClients(INITIAL_CLIENTS);
     setDrivers(INITIAL_DRIVERS);
     setVehicles(INITIAL_VEHICLES);
@@ -497,6 +628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFinancial(INITIAL_FINANCIAL);
     setAuditLogs(INITIAL_AUDIT);
     setAutomationLogs(INITIAL_AUTOMATIONS);
+    setUsers(INITIAL_USERS);
     addToast({ title: 'Dados Demo Restaurados', description: 'O banco de dados de teste foi restaurado com sucesso.', type: 'info' });
   };
 
@@ -504,6 +636,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         currentUser,
+        setCurrentUser,
+        users,
+        loginWithUsername,
+        logout,
+        addUser,
+        updateUser,
+        deleteUser,
         setRole,
         theme,
         toggleTheme,

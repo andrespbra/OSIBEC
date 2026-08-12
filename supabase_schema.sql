@@ -156,6 +156,22 @@ CREATE TABLE IF NOT EXISTS public.automation_logs (
   os_number TEXT
 );
 
+-- 8. Tabela de Usuários / Funcionários
+CREATE TABLE IF NOT EXISTS public.users (
+  id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'operador',
+  phone TEXT,
+  email TEXT,
+  company_name TEXT,
+  client_id TEXT,
+  driver_id TEXT,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- =======================================================
 -- REGRAS DE SEGURANÇA (ROW LEVEL SECURITY - RLS)
 -- Habilita acesso de leitura e escrita pública/autenticada
@@ -167,6 +183,7 @@ ALTER TABLE public.service_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.financial_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.automation_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Acesso Total Clientes" ON public.clients FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso Total Motoristas" ON public.drivers FOR ALL USING (true) WITH CHECK (true);
@@ -175,3 +192,4 @@ CREATE POLICY "Acesso Total OS" ON public.service_orders FOR ALL USING (true) WI
 CREATE POLICY "Acesso Total Financeiro" ON public.financial_records FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso Total Auditoria" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Acesso Total Automacao" ON public.automation_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso Total Usuarios" ON public.users FOR ALL USING (true) WITH CHECK (true);
