@@ -139,8 +139,8 @@ CREATE TABLE IF NOT EXISTS financial_records (id TEXT PRIMARY KEY, type TEXT, ca
           </p>
 
           <div className="p-3 rounded-2xl bg-zinc-950 font-mono text-[11px] text-emerald-400 space-y-1.5 overflow-x-auto">
-            <div>VITE_SUPABASE_URL=https://seu-projeto.supabase.co</div>
-            <div>VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR...</div>
+            <div>VITE_SUPABASE_URL=https://xjiuiazligncwtncrehy.supabase.co</div>
+            <div>VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqaXVpYXpsaWduY3d0bmNyZWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MTUxMjEsImV4cCI6MjEwMjA5MTEyMX0.CWwU_81JnfP-pRSzBEIkMOQOecnfxh1Vd_ailds-lT0</div>
           </div>
 
           <div className="pt-2">
