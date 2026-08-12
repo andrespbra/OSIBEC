@@ -77,7 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('ibec_current_user');
-    return saved ? JSON.parse(saved) : INITIAL_USERS[0];
+    return saved ? JSON.parse(saved) : null;
   });
 
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -85,37 +85,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Persistent storage state with initial fallbacks
   const [clients, setClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem('ibec_clients');
-    return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [drivers, setDrivers] = useState<Driver[]>(() => {
     const saved = localStorage.getItem('ibec_drivers');
-    return saved ? JSON.parse(saved) : INITIAL_DRIVERS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
     const saved = localStorage.getItem('ibec_vehicles');
-    return saved ? JSON.parse(saved) : INITIAL_VEHICLES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [services, setServices] = useState<ServiceOrder[]>(() => {
     const saved = localStorage.getItem('ibec_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [financial, setFinancial] = useState<FinancialRecord[]>(() => {
     const saved = localStorage.getItem('ibec_financial');
-    return saved ? JSON.parse(saved) : INITIAL_FINANCIAL;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const saved = localStorage.getItem('ibec_audit');
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [automationLogs, setAutomationLogs] = useState<AutomationLog[]>(() => {
     const saved = localStorage.getItem('ibec_automations');
-    return saved ? JSON.parse(saved) : INITIAL_AUTOMATIONS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Sync users & currentUser to local storage

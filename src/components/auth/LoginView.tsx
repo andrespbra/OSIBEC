@@ -5,8 +5,8 @@ import { UserRole } from '../../types';
 
 export const LoginView: React.FC = () => {
   const { loginWithUsername, users, setCurrentUser } = useApp();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleQuickLogin = (role: UserRole) => {
