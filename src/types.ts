@@ -9,6 +9,7 @@ export type UserRole =
 
 export type ServiceStatus = 
   | 'aguardando'
+  | 'agendado'
   | 'despachado'
   | 'aceito'
   | 'em_deslocamento'
@@ -188,6 +189,9 @@ export interface ServiceOrder {
   commission: number;
   profit: number;
   status: ServiceStatus;
+  isScheduled?: boolean;
+  scheduledDate?: string;
+  scheduledTime?: string;
   proofPhoto?: string;
   signature?: string;
   receivedByName?: string;

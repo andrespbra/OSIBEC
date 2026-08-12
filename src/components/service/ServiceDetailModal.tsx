@@ -34,6 +34,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
   };
 
   const statusList: { status: ServiceStatus; label: string }[] = [
+    { status: 'agendado', label: '0. Agendado' },
     { status: 'aguardando', label: '1. Aguardando' },
     { status: 'despachado', label: '2. Despachado' },
     { status: 'aceito', label: '3. Aceito' },
@@ -115,6 +116,21 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
               })}
             </div>
           </div>
+
+          {/* Scheduled Banner if Applicable */}
+          {(service.isScheduled || service.status === 'agendado') && (
+            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-3">
+              <Calendar className="h-6 w-6 text-cyan-500 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase">
+                  Serviço Agendado / Programado
+                </p>
+                <p className="text-xs text-cyan-800 dark:text-cyan-200">
+                  Data de Execução Programada: <strong>{service.scheduledDate || service.date}</strong> às <strong>{service.scheduledTime || service.time}</strong>
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Route Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

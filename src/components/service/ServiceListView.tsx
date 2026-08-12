@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   PackageCheck, Search, Filter, LayoutGrid, List, Plus, 
-  Clock, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2 
+  Clock, Calendar, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2 
 } from 'lucide-react';
 import { ServiceOrder, ServiceStatus, VehicleType } from '../../types';
 import { ServiceDetailModal } from './ServiceDetailModal';
@@ -33,6 +33,7 @@ export const ServiceListView: React.FC = () => {
 
   // Kanban Columns
   const kanbanColumns: { id: ServiceStatus; title: string; color: string }[] = [
+    { id: 'agendado', title: 'Agendado', color: 'border-cyan-500 bg-cyan-500/10 text-cyan-500 dark:text-cyan-400' },
     { id: 'aguardando', title: 'Aguardando Aceite', color: 'border-zinc-400 bg-zinc-500/10 text-zinc-400' },
     { id: 'despachado', title: 'Despachado', color: 'border-blue-500 bg-blue-500/10 text-blue-500' },
     { id: 'aceito', title: 'Motorista Aceitou', color: 'border-indigo-500 bg-indigo-500/10 text-indigo-500' },
@@ -119,6 +120,7 @@ export const ServiceListView: React.FC = () => {
             className="w-full px-3 py-2.5 text-xs font-semibold rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100"
           >
             <option value="all">Todos os Status...</option>
+            <option value="agendado">📅 Agendados (Programados)</option>
             <option value="aguardando">Aguardando Aceite</option>
             <option value="despachado">Despachado</option>
             <option value="em_transito">Em Trânsito</option>
@@ -184,6 +186,13 @@ export const ServiceListView: React.FC = () => {
                           </span>
                         </div>
 
+                        {(s.isScheduled || s.status === 'agendado') && (
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
+                            <Calendar className="h-3 w-3" />
+                            <span>Agendado: {s.date} às {s.time}</span>
+                          </div>
+                        )}
+
                         <div>
                           <p className="text-xs font-extrabold text-zinc-900 dark:text-zinc-100">{s.clientName}</p>
                           <p className="text-[11px] text-zinc-500 truncate mt-0.5">📍 {s.destination.address}</p>
@@ -226,6 +235,7 @@ export const ServiceListView: React.FC = () => {
                   <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                     <td className="p-4 font-bold font-mono text-purple-600 dark:text-purple-400">
                       {s.osNumber}
+                      <span className="block text-[10px] text-zinc-500 font-normal">📅 {s.date} às {s.time}</span>
                     </td>
                     <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
                       {s.clientName}

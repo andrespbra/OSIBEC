@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   X, Zap, Building2, MapPin, Truck, DollarSign, Calculator, 
-  Plus, Trash2, ArrowRight, UserCheck, ShieldCheck, CheckCircle2, Navigation, AlertCircle
+  Plus, Trash2, ArrowRight, UserCheck, ShieldCheck, CheckCircle2, Navigation, AlertCircle,
+  Calendar, Clock
 } from 'lucide-react';
 import { ServiceType, VehicleType, Waypoint } from '../../types';
 
@@ -21,6 +22,13 @@ export const NewServiceModal: React.FC = () => {
   const [serviceType, setServiceType] = useState<ServiceType>('entrega');
   const [vehicleType, setVehicleType] = useState<VehicleType>('moto');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+
+  // Date & Scheduling State
+  const todayDefault = new Date().toISOString().split('T')[0];
+  const nowTimeDefault = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [serviceDate, setServiceDate] = useState<string>(todayDefault);
+  const [serviceTime, setServiceTime] = useState<string>(nowTimeDefault);
+  const [isScheduled, setIsScheduled] = useState<boolean>(false);
 
   // Origin & Destination
   const [originAddress, setOriginAddress] = useState('');
@@ -126,9 +134,17 @@ export const NewServiceModal: React.FC = () => {
     const commission = Math.round(priceCharged * 0.10);
     const profit = priceCharged - driverCost - tollValue;
 
+    // Determine status: If isScheduled is true, status is 'agendado'
+    const finalStatus = isScheduled 
+      ? 'agendado' 
+      : (driver ? 'despachado' : 'aguardando');
+
     createService({
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: serviceDate || todayDefault,
+      time: serviceTime || nowTimeDefault,
+      isScheduled,
+      scheduledDate: isScheduled ? serviceDate : undefined,
+      scheduledTime: isScheduled ? serviceTime : undefined,
       clientId: selectedClientId,
       clientName: client ? client.nomeFantasia : 'Cliente Não Informado',
       solicitante: solicitante || (client?.responsavel || 'Operador'),
@@ -161,7 +177,7 @@ export const NewServiceModal: React.FC = () => {
       driverCost,
       commission,
       profit,
-      status: driver ? 'despachado' : 'aguardando',
+      status: finalStatus,
       notes
     });
 
@@ -299,6 +315,79 @@ export const NewServiceModal: React.FC = () => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* STEP 1.5: SERVICE DATE & SCHEDULING (DATA & AGENDAMENTO) */}
+          <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-800/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" /> Data do Serviço & Agendamento
+              </span>
+              
+              <label className="flex items-center gap-2 cursor-pointer select-none bg-white dark:bg-zinc-800 px-3 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800/50 shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={isScheduled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsScheduled(checked);
+                    if (checked && serviceDate === todayDefault) {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      setServiceDate(tomorrow.toISOString().split('T')[0]);
+                      setServiceTime('08:30');
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-zinc-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                  Agendar Serviço (Futuro)
+                </span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5 text-indigo-500" /> Data da Execução *
+                </label>
+                <input
+                  type="date"
+                  value={serviceDate}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    setServiceDate(selected);
+                    if (selected > todayDefault) {
+                      setIsScheduled(true);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-indigo-500" /> Horário Solicitado / Programado *
+                </label>
+                <input
+                  type="time"
+                  value={serviceTime}
+                  onChange={(e) => setServiceTime(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
+                  required
+                />
+              </div>
+            </div>
+
+            {isScheduled && (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs text-cyan-800 dark:text-cyan-300 font-medium animate-in fade-in">
+                <AlertCircle className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                <span>
+                  <strong>Serviço Agendado:</strong> Esta OS entrará com status <strong className="uppercase">AGENDADO</strong> para a data <strong>{serviceDate ? new Date(serviceDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</strong> às <strong>{serviceTime}</strong>.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* STEP 2: SERVICE TYPE & VEHICLE SELECTION */}
