@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   X, MapPin, Truck, Calendar, Clock, DollarSign, UserCheck, 
-  CheckCircle2, Share2, Printer, ShieldCheck, QrCode, Barcode, FileText, Camera, Edit3
+  CheckCircle2, Share2, Printer, ShieldCheck, QrCode, Barcode, FileText, Camera, Edit3, Trash2, AlertTriangle
 } from 'lucide-react';
 import { ServiceOrder, ServiceStatus } from '../../types';
 
@@ -12,10 +12,17 @@ interface ServiceDetailModalProps {
 }
 
 export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service, onClose }) => {
-  const { updateServiceStatus, addToast } = useApp();
+  const { updateServiceStatus, deleteService, addToast } = useApp();
   const printRef = useRef<HTMLDivElement>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!service) return null;
+
+  const handleDelete = () => {
+    deleteService(service.id);
+    setShowDeleteConfirm(false);
+    onClose();
+  };
 
   const handleShareWhatsApp = () => {
     const text = `*IBEC FLOW - Comprovante e Rastreamento OS ${service.osNumber}*\n\n` +
@@ -73,23 +80,65 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
           <div className="flex items-center gap-2">
             <button 
               onClick={handleShareWhatsApp}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Share2 className="h-3.5 w-3.5" />
               <span>WhatsApp</span>
             </button>
             <button 
               onClick={handlePrintVoucher}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-700 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="h-3.5 w-3.5" />
               <span>Imprimir</span>
             </button>
-            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+            <button 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Excluir Ordem de Serviço"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Excluir OS</span>
+            </button>
+            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer">
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
+
+        {/* Confirmation Modal for Deletion */}
+        {showDeleteConfirm && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-zinc-900 border border-red-500/30 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-center">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">Excluir Ordem de Serviço?</h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Tem certeza que deseja excluir permanentemente a <strong className="text-white">{service.osNumber}</strong> ({service.clientName})? Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-lg shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Sim, Excluir OS</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Body */}
         <div ref={printRef} className="flex-1 overflow-y-auto p-6 space-y-6">

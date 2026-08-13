@@ -2,19 +2,20 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   PackageCheck, Search, Filter, LayoutGrid, List, Plus, 
-  Clock, Calendar, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2 
+  Clock, Calendar, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2, Trash2, AlertTriangle 
 } from 'lucide-react';
 import { ServiceOrder, ServiceStatus, VehicleType } from '../../types';
 import { ServiceDetailModal } from './ServiceDetailModal';
 
 export const ServiceListView: React.FC = () => {
-  const { services, setIsNewServiceModalOpen, updateServiceStatus } = useApp();
+  const { services, setIsNewServiceModalOpen, updateServiceStatus, deleteService } = useApp();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [selectedVehicleFilter, setSelectedVehicleFilter] = useState<string>('all');
   const [detailService, setDetailService] = useState<ServiceOrder | null>(null);
+  const [serviceToDelete, setServiceToDelete] = useState<ServiceOrder | null>(null);
 
   // Filter services
   const filteredServices = services.filter(s => {
@@ -181,9 +182,22 @@ export const ServiceListView: React.FC = () => {
                           <span className="text-xs font-extrabold text-purple-600 dark:text-purple-400 font-mono">
                             {s.osNumber}
                           </span>
-                          <span className="text-[10px] font-bold uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md text-zinc-600 dark:text-zinc-300">
-                            {s.vehicleType}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md text-zinc-600 dark:text-zinc-300">
+                              {s.vehicleType}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setServiceToDelete(s);
+                              }}
+                              className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              title="Excluir OS"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         {s.nossoPedido && (
@@ -271,13 +285,22 @@ export const ServiceListView: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button
-                        onClick={() => setDetailService(s)}
-                        className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 hover:bg-purple-100 transition-colors"
-                        title="Ver Detalhes"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setDetailService(s)}
+                          className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors cursor-pointer"
+                          title="Ver Detalhes"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setServiceToDelete(s)}
+                          className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors cursor-pointer"
+                          title="Excluir OS"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -293,6 +316,43 @@ export const ServiceListView: React.FC = () => {
           service={detailService}
           onClose={() => setDetailService(null)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {serviceToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-zinc-900 border border-red-500/30 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">Excluir Ordem de Serviço?</h3>
+              <p className="text-xs text-zinc-400 mt-1">
+                Tem certeza que deseja excluir a <strong className="text-white">{serviceToDelete.osNumber}</strong> ({serviceToDelete.clientName})? A ação removerá o registro permanentemente.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setServiceToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteService(serviceToDelete.id);
+                  setServiceToDelete(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-lg shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Sim, Excluir OS</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

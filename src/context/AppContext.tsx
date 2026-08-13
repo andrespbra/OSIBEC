@@ -53,6 +53,7 @@ interface AppContextType {
 
   createService: (newServiceData: Omit<ServiceOrder, 'id' | 'osNumber' | 'createdAt' | 'updatedAt' | 'timeline' | 'qrCode' | 'barcode' | 'trackingUrl'>) => ServiceOrder;
   updateServiceStatus: (serviceId: string, status: ServiceStatus, notes?: string, proofPhoto?: string, signature?: string, receivedByName?: string, receivedByDoc?: string) => void;
+  deleteService: (serviceId: string) => void;
   addClient: (client: Omit<Client, 'id' | 'totalServices' | 'totalSpent' | 'createdAt'>) => void;
   addDriver: (driver: Omit<Driver, 'id' | 'completedToday' | 'totalKmToday'>) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
@@ -542,6 +543,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const deleteService = (serviceId: string) => {
+    const targetService = services.find(s => s.id === serviceId);
+    const osNum = targetService ? targetService.osNumber : serviceId;
+
+    setServices(prev => prev.filter(s => s.id !== serviceId));
+    setFinancial(prev => prev.filter(f => f.osNumber !== osNum));
+
+    if (selectedServiceForDetail?.id === serviceId) {
+      setSelectedServiceForDetail(null);
+    }
+
+    if (supabase) {
+      supabase.from('service_orders').delete().eq('id', serviceId).then(({ error }) => {
+        if (error) console.log('Supabase service delete error:', error.message);
+      });
+    }
+
+    logAudit('SERVICE_DELETE', `Ordem de Serviço ${osNum} excluída do sistema.`);
+    addToast({
+      title: `Ordem de Serviço ${osNum} Excluída`,
+      description: 'A OS foi removida permanentemente do sistema.',
+      type: 'warning'
+    });
+  };
+
   const addClient = (clientData: Omit<Client, 'id' | 'totalServices' | 'totalSpent' | 'createdAt'>) => {
     const newClient: Client = {
       ...clientData,
@@ -665,6 +691,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeToast,
         createService,
         updateServiceStatus,
+        deleteService,
         addClient,
         addDriver,
         addVehicle,

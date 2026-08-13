@@ -121,7 +121,6 @@ export const LoginView: React.FC = () => {
               required
               className="w-full px-4 py-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
-            /*<p className="text-[10px] text-zinc-500 mt-1"> <code className="text-purple-400 font-mono"></code></p>*/
           </div>
 
           <div>
@@ -137,7 +136,6 @@ export const LoginView: React.FC = () => {
               required
               className="w-full px-4 py-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
-           /* <p className="text-[10px] text-zinc-500 mt-1"><code className="text-purple-400 font-mono"></code></p>*/
           </div>
 
           <button
