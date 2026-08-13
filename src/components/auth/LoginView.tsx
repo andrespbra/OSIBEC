@@ -43,7 +43,7 @@ export const LoginView: React.FC = () => {
               <Truck className="h-7 w-7 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">IBEC FLOW</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight">GRUPO IBEC</h1>
           <p className="text-xs text-zinc-400">Autenticação Simplificada por Nome de Usuário e Senha</p>
         </div>
 
