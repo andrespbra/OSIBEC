@@ -188,6 +188,7 @@ export interface ServiceOrder {
   driverCost: number;
   commission: number;
   profit: number;
+  nossoPedido?: string;
   status: ServiceStatus;
   isScheduled?: boolean;
   scheduledDate?: string;

@@ -51,7 +51,15 @@ export const NewServiceModal: React.FC = () => {
   const [tollValue, setTollValue] = useState(0.00);
   const [priceCharged, setPriceCharged] = useState(150.00);
   const [driverCost, setDriverCost] = useState(98.00);
+  const [commission, setCommission] = useState(15.00);
+  const [nossoPedido, setNossoPedido] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Selected client helper
+  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const isKurzClient = selectedClient 
+    ? (selectedClient.nomeFantasia.toUpperCase().includes('KURZ') || selectedClient.razaoSocial.toUpperCase().includes('KURZ'))
+    : false;
 
   // Pre-fill automatically when client is selected!
   useEffect(() => {
@@ -62,14 +70,47 @@ export const NewServiceModal: React.FC = () => {
         setTelefone(client.telefone);
         setWhatsapp(client.whatsapp);
         setCentroCusto(client.centroCustoPadrao);
-        setOriginAddress(client.endereco);
-        setOriginContact(`${client.responsavel} - ${client.nomeFantasia}`);
+        if (!originAddress) {
+          setOriginAddress(client.endereco);
+          setOriginContact(`${client.responsavel} - ${client.nomeFantasia}`);
+        }
 
         // Recalculate price based on client pricing tier
         recalculatePricing(distanceKm, vehicleType, client.tabelaPrecos);
       }
     }
   }, [selectedClientId]);
+
+  // Auto-calculate distance KM whenever origin or destination changes (unless user typed custom KM)
+  const autoCalculateDistance = (orig: string, dest: string) => {
+    if (!orig || !dest) return;
+    // Calculate a realistic simulated route distance based on string seed
+    let seed = 0;
+    const combined = orig + dest;
+    for (let i = 0; i < combined.length; i++) {
+      seed += combined.charCodeAt(i);
+    }
+    const calculatedKm = Math.min(120, Math.max(5.5, (seed % 42) + 6.5));
+    const roundedKm = Math.round(calculatedKm * 10) / 10;
+    
+    setDistanceKm(roundedKm);
+    const client = clients.find(c => c.id === selectedClientId);
+    recalculatePricing(roundedKm, vehicleType, client?.tabelaPrecos);
+  };
+
+  const handleOriginAddressChange = (val: string) => {
+    setOriginAddress(val);
+    if (val.length > 5 && destAddress.length > 5) {
+      autoCalculateDistance(val, destAddress);
+    }
+  };
+
+  const handleDestAddressChange = (val: string) => {
+    setDestAddress(val);
+    if (originAddress.length > 5 && val.length > 5) {
+      autoCalculateDistance(originAddress, val);
+    }
+  };
 
   // Recalculate financial breakdown whenever distance or vehicle type changes
   const recalculatePricing = (dist: number, veh: VehicleType, tableTier: string = 'Express Premium') => {
@@ -85,11 +126,13 @@ export const NewServiceModal: React.FC = () => {
     else if (tableTier === 'E-commerce Especial') { baseRate *= 0.9; }
 
     const calculatedPrice = Math.round(baseRate + (dist * kmRate) + (stopovers.length * 15.0));
-    const calculatedDriverCost = Math.round(calculatedPrice * 0.68);
+    const calculatedDriverCost = Math.round(calculatedPrice * 0.65);
+    const calculatedCommission = Math.round(calculatedPrice * 0.10);
     const estTime = Math.round((dist / 30) * 60) + (stopovers.length * 10) + 10;
 
     setPriceCharged(calculatedPrice);
     setDriverCost(calculatedDriverCost);
+    setCommission(calculatedCommission);
     setEstimatedTimeMin(estTime);
   };
 
@@ -131,8 +174,7 @@ export const NewServiceModal: React.FC = () => {
     const client = clients.find(c => c.id === selectedClientId);
     const driver = drivers.find(d => d.id === selectedDriverId);
 
-    const commission = Math.round(priceCharged * 0.10);
-    const profit = priceCharged - driverCost - tollValue;
+    const profit = priceCharged - driverCost - commission - tollValue;
 
     // Determine status: If isScheduled is true, status is 'agendado'
     const finalStatus = isScheduled 
@@ -151,6 +193,7 @@ export const NewServiceModal: React.FC = () => {
       telefone: telefone || (client?.telefone || ''),
       whatsapp: whatsapp || (client?.whatsapp || ''),
       centroCusto: centroCusto || 'CC-GERAL',
+      nossoPedido: nossoPedido.trim() || undefined,
       serviceType,
       vehicleType,
       driverId: driver?.id,
@@ -186,8 +229,7 @@ export const NewServiceModal: React.FC = () => {
 
   if (!isNewServiceModalOpen) return null;
 
-  const commission = Math.round(priceCharged * 0.10);
-  const profit = priceCharged - driverCost - tollValue;
+  const profit = priceCharged - driverCost - commission - tollValue;
   const profitMarginPercent = priceCharged > 0 ? Math.round((profit / priceCharged) * 100) : 0;
 
   // Filter available drivers matching vehicle type
@@ -288,7 +330,31 @@ export const NewServiceModal: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center justify-between">
+                  <span>Nosso Pedido</span>
+                  {isKurzClient ? (
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      🏢 Ref. KURZ
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 font-normal">Ref. Cliente / KURZ</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={nossoPedido}
+                  onChange={e => setNossoPedido(e.target.value)}
+                  placeholder={isKurzClient ? "Ex: PED-KURZ-2026-99" : "Número ou código do pedido"}
+                  className={`w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800 border text-zinc-900 dark:text-zinc-100 font-bold ${
+                    isKurzClient 
+                      ? 'border-amber-500 ring-2 ring-amber-500/20' 
+                      : 'border-zinc-300 dark:border-zinc-700'
+                  }`}
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                   Telefone Contato
@@ -465,7 +531,7 @@ export const NewServiceModal: React.FC = () => {
                 <input
                   type="text"
                   value={originAddress}
-                  onChange={e => setOriginAddress(e.target.value)}
+                  onChange={e => handleOriginAddressChange(e.target.value)}
                   placeholder="Endereço de Origem..."
                   className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-medium"
                 />
@@ -486,7 +552,7 @@ export const NewServiceModal: React.FC = () => {
                 <input
                   type="text"
                   value={destAddress}
-                  onChange={e => setDestAddress(e.target.value)}
+                  onChange={e => handleDestAddressChange(e.target.value)}
                   placeholder="Endereço de Destino..."
                   className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-medium"
                 />
@@ -541,18 +607,29 @@ export const NewServiceModal: React.FC = () => {
             </div>
           </div>
 
-          {/* STEP 4: DISTANCE, TIME & AUTOMATIC PRICING BREAKDOWN */}
+          {/* STEP 4: DISTANCE, TIME & AUTOMATIC / CUSTOM PRICING BREAKDOWN */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-950 text-white space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
               <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Calculator className="h-4 w-4" /> 3. Cálculo Automático & Margem de Lucro
+                <Calculator className="h-4 w-4" /> 3. Cálculo de Rota & Valores Financeiros
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono">
-                Sugestão baseada em tabela + km + paradas
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (originAddress && destAddress) {
+                    autoCalculateDistance(originAddress, destAddress);
+                  } else {
+                    recalculatePricing(distanceKm, vehicleType);
+                  }
+                }}
+                className="text-[10px] font-bold text-purple-300 hover:text-white bg-purple-900/50 hover:bg-purple-800 px-2.5 py-1 rounded-lg border border-purple-700/50 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Zap className="h-3 w-3 text-amber-300" /> Recalcular Automático
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Inputs Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
                 <label className="block text-[11px] text-zinc-400 mb-1">Distância (Km)</label>
                 <input
@@ -560,7 +637,7 @@ export const NewServiceModal: React.FC = () => {
                   step="0.1"
                   value={distanceKm}
                   onChange={e => handleDistanceChange(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+                  className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
                 />
               </div>
 
@@ -570,34 +647,61 @@ export const NewServiceModal: React.FC = () => {
                   type="number"
                   value={estimatedTimeMin}
                   onChange={e => setEstimatedTimeMin(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+                  className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 mb-1">Pedágio Estimado (R$)</label>
+                <label className="block text-[11px] text-zinc-400 mb-1">Pedágio (R$)</label>
                 <input
                   type="number"
                   step="0.50"
                   value={tollValue}
                   onChange={e => setTollValue(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+                  className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg bg-zinc-800 border border-zinc-700 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] text-zinc-400 mb-1">Valor Cobrado Cliente (R$)</label>
+                <label className="block text-[11px] text-amber-400 mb-1 font-bold">Valor Cliente (R$)</label>
                 <input
                   type="number"
+                  step="1.00"
                   value={priceCharged}
                   onChange={e => setPriceCharged(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 text-xs font-extrabold rounded-lg bg-purple-950 border border-purple-600 text-amber-300"
+                  className="w-full px-2.5 py-1.5 text-xs font-extrabold rounded-lg bg-purple-950 border border-purple-600 text-amber-300 focus:ring-1 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-amber-300 mb-1 font-bold">Pago Motorista (R$)</label>
+                <input
+                  type="number"
+                  step="1.00"
+                  value={driverCost}
+                  onChange={e => setDriverCost(parseFloat(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 text-xs font-extrabold rounded-lg bg-amber-950/60 border border-amber-600/70 text-amber-200 focus:ring-1 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-indigo-300 mb-1 font-bold">Comissão Sistema (R$)</label>
+                <input
+                  type="number"
+                  step="1.00"
+                  value={commission}
+                  onChange={e => setCommission(parseFloat(e.target.value) || 0)}
+                  className="w-full px-2.5 py-1.5 text-xs font-extrabold rounded-lg bg-indigo-950/60 border border-indigo-600/70 text-indigo-200 focus:ring-1 focus:ring-indigo-400"
                 />
               </div>
             </div>
 
-            {/* Profit Margin Visualizer */}
-            <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-zinc-800/60 border border-zinc-700/60 text-center">
+            {/* Profit Margin & Profit Summary Box */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-center items-center">
+              <div>
+                <p className="text-[10px] text-zinc-400 uppercase font-medium">Cobrado do Cliente</p>
+                <p className="text-sm font-extrabold text-amber-300">R$ {priceCharged.toFixed(2)}</p>
+              </div>
               <div>
                 <p className="text-[10px] text-zinc-400 uppercase font-medium">Repasse Motorista</p>
                 <p className="text-sm font-bold text-amber-400">R$ {driverCost.toFixed(2)}</p>
@@ -606,9 +710,9 @@ export const NewServiceModal: React.FC = () => {
                 <p className="text-[10px] text-zinc-400 uppercase font-medium">Comissão Sistema</p>
                 <p className="text-sm font-bold text-indigo-400">R$ {commission.toFixed(2)}</p>
               </div>
-              <div>
-                <p className="text-[10px] text-zinc-400 uppercase font-medium">Lucro Líquido ({profitMarginPercent}%)</p>
-                <p className="text-sm font-extrabold text-emerald-400">R$ {profit.toFixed(2)}</p>
+              <div className="bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-500/30">
+                <p className="text-[10px] text-emerald-400 uppercase font-bold">Lucro Líquido ({profitMarginPercent}%)</p>
+                <p className="text-sm font-extrabold text-emerald-300">R$ {profit.toFixed(2)}</p>
               </div>
             </div>
           </div>

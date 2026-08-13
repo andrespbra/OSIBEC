@@ -56,9 +56,16 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
               {service.osNumber}
             </span>
             <div>
-              <h2 className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
-                {service.clientName}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-zinc-900 dark:text-zinc-100">
+                  {service.clientName}
+                </h2>
+                {service.nossoPedido && (
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    NOSSO PEDIDO: {service.nossoPedido}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-zinc-500">Solicitante: {service.solicitante} • {service.date} às {service.time}</p>
             </div>
           </div>
@@ -179,14 +186,18 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
           )}
 
           {/* Financial & Vehicle Details */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 rounded-2xl bg-zinc-900 text-white">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-4 rounded-2xl bg-zinc-900 text-white">
             <div>
               <p className="text-[10px] text-zinc-400 uppercase">Valor Cobrado</p>
               <p className="text-base font-extrabold text-amber-300">R$ {service.priceCharged.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-zinc-400 uppercase">Custo Motorista</p>
-              <p className="text-base font-bold text-zinc-200">R$ {service.driverCost.toFixed(2)}</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Pago Motorista</p>
+              <p className="text-base font-bold text-amber-200">R$ {service.driverCost.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-zinc-400 uppercase">Comissão Sistema</p>
+              <p className="text-base font-bold text-indigo-300">R$ {(service.commission || 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-[10px] text-zinc-400 uppercase">Lucro Líquido</p>
@@ -194,7 +205,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
             </div>
             <div>
               <p className="text-[10px] text-zinc-400 uppercase">Distância / Tempo</p>
-              <p className="text-sm font-bold text-purple-300">{service.distanceKm} km ({service.estimatedTimeMin} min)</p>
+              <p className="text-xs font-bold text-purple-300">{service.distanceKm} km ({service.estimatedTimeMin} min)</p>
             </div>
           </div>
 

@@ -186,6 +186,12 @@ export const ServiceListView: React.FC = () => {
                           </span>
                         </div>
 
+                        {s.nossoPedido && (
+                          <div className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-extrabold text-amber-600 dark:text-amber-400">
+                            PEDIDO: {s.nossoPedido}
+                          </div>
+                        )}
+
                         {(s.isScheduled || s.status === 'agendado') && (
                           <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-bold text-cyan-600 dark:text-cyan-400">
                             <Calendar className="h-3 w-3" />
@@ -240,6 +246,11 @@ export const ServiceListView: React.FC = () => {
                     <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
                       {s.clientName}
                       <span className="block text-[10px] text-zinc-500 font-normal">{s.solicitante}</span>
+                      {s.nossoPedido && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                          PEDIDO: {s.nossoPedido}
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 max-w-xs truncate text-zinc-600 dark:text-zinc-400">
                       <span className="text-emerald-500 font-bold">Origem:</span> {s.origin.address}

@@ -92,6 +92,29 @@ export const INITIAL_CLIENTS: Client[] = [
     totalServices: 95,
     totalSpent: 54300.00,
     createdAt: '2025-02-01T14:20:00Z'
+  },
+  {
+    id: 'cli-5',
+    razaoSocial: 'KURZ do Brasil Foils e Estampagem LTDA',
+    nomeFantasia: 'KURZ do Brasil',
+    cnpj: '54.321.987/0001-88',
+    ie: '109.887.654.321',
+    responsavel: 'Ricardo Mendes',
+    telefone: '(11) 3990-8800',
+    whatsapp: '(11) 98111-2233',
+    email: 'pedidos@kurz.com.br',
+    endereco: 'Rua do Bosque, 1500 - Barra Funda, São Paulo - SP',
+    cep: '01136-001',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    centroCustoPadrao: 'CC-KURZ-ESTAMPAGEM',
+    formaPagamento: 'Faturado 30 dias',
+    tabelaPrecos: 'Corporativo VIP',
+    observacoes: 'CLIENTE KURZ. Exige preenchimento do campo NOSSO PEDIDO.',
+    documentosCount: 8,
+    totalServices: 89,
+    totalSpent: 67800.00,
+    createdAt: '2024-05-10T08:00:00Z'
   }
 ];
 
