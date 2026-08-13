@@ -22,7 +22,7 @@ import { LoginView } from './components/auth/LoginView';
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { activeTab, isNewServiceModalOpen, currentUser, toasts, removeToast } = useApp();
+  const { activeTab, isNewServiceModalOpen, editingService, currentUser, toasts, removeToast } = useApp();
 
   if (!currentUser) {
     return <LoginView />;
@@ -116,8 +116,8 @@ const MainContent: React.FC = () => {
         ))}
       </div>
 
-      {/* New Service Quick Dispatch Modal (<20 seconds) */}
-      {isNewServiceModalOpen && <NewServiceModal />}
+      {/* New Service / Edit Service Quick Dispatch Modal */}
+      {(isNewServiceModalOpen || Boolean(editingService)) && <NewServiceModal />}
 
     </div>
   );

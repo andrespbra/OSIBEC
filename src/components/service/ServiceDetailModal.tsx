@@ -12,7 +12,7 @@ interface ServiceDetailModalProps {
 }
 
 export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service, onClose }) => {
-  const { updateServiceStatus, deleteService, setEditingService, addToast } = useApp();
+  const { updateServiceStatus, deleteService, setEditingService, setIsNewServiceModalOpen, addToast } = useApp();
   const printRef = useRef<HTMLDivElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -20,6 +20,7 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
 
   const handleEdit = () => {
     setEditingService(service);
+    setIsNewServiceModalOpen(true);
     onClose();
   };
 

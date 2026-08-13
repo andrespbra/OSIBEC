@@ -3,9 +3,9 @@ import { useApp } from '../../context/AppContext';
 import { 
   X, Zap, Building2, MapPin, Truck, DollarSign, Calculator, 
   Plus, Trash2, ArrowRight, UserCheck, ShieldCheck, CheckCircle2, Navigation, AlertCircle,
-  Calendar, Clock
+  Calendar, Clock, Edit3
 } from 'lucide-react';
-import { ServiceType, VehicleType, Waypoint } from '../../types';
+import { ServiceOrder, ServiceStatus, ServiceType, VehicleType, Waypoint } from '../../types';
 
 export const NewServiceModal: React.FC = () => {
   const { 
@@ -23,6 +23,7 @@ export const NewServiceModal: React.FC = () => {
   const [serviceType, setServiceType] = useState<ServiceType>('entrega');
   const [vehicleType, setVehicleType] = useState<VehicleType>('moto');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [currentStatus, setCurrentStatus] = useState<ServiceStatus>('aguardando');
 
   // Date & Scheduling State
   const todayDefault = new Date().toISOString().split('T')[0];
@@ -65,17 +66,31 @@ export const NewServiceModal: React.FC = () => {
   // Pre-fill when editing an existing service
   useEffect(() => {
     if (editingService) {
-      setSelectedClientId(editingService.clientId || '');
+      let foundClientId = editingService.clientId || '';
+      if (!foundClientId && editingService.clientName) {
+        const c = clients.find(cl => cl.nomeFantasia === editingService.clientName || cl.razaoSocial === editingService.clientName);
+        if (c) foundClientId = c.id;
+      }
+      setSelectedClientId(foundClientId);
+
       setSolicitante(editingService.solicitante || '');
       setTelefone(editingService.telefone || '');
       setWhatsapp(editingService.whatsapp || '');
       setCentroCusto(editingService.centroCusto || '');
       setServiceType(editingService.serviceType || 'entrega');
       setVehicleType(editingService.vehicleType || 'moto');
-      setSelectedDriverId(editingService.driverId || '');
-      setServiceDate(editingService.serviceDate || todayDefault);
-      setServiceTime(editingService.serviceTime || nowTimeDefault);
-      setIsScheduled(editingService.isScheduled || false);
+      
+      let foundDriverId = editingService.driverId || '';
+      if (!foundDriverId && editingService.driverName) {
+        const d = drivers.find(dr => dr.nome === editingService.driverName);
+        if (d) foundDriverId = d.id;
+      }
+      setSelectedDriverId(foundDriverId);
+
+      setServiceDate(editingService.serviceDate || editingService.date || todayDefault);
+      setServiceTime(editingService.serviceTime || editingService.time || nowTimeDefault);
+      setIsScheduled(editingService.isScheduled || editingService.status === 'agendado' || false);
+      setCurrentStatus(editingService.status || 'aguardando');
       setOriginAddress(editingService.origin?.address || '');
       setOriginContact(editingService.origin?.contact || '');
       setOriginLat(editingService.origin?.lat || -23.5615);
@@ -84,7 +99,7 @@ export const NewServiceModal: React.FC = () => {
       setDestContact(editingService.destination?.contact || '');
       setDestLat(editingService.destination?.lat || -23.5874);
       setDestLng(editingService.destination?.lng || -46.6789);
-      setStopovers(editingService.stopovers || []);
+      setStopovers(editingService.stopovers ? [...editingService.stopovers] : []);
       setDistanceKm(editingService.distanceKm || 12.5);
       setEstimatedTimeMin(editingService.estimatedTimeMin || 25);
       setTollValue(editingService.tollValue || 0);
@@ -93,8 +108,34 @@ export const NewServiceModal: React.FC = () => {
       setCommission(editingService.commission || 0);
       setNossoPedido(editingService.nossoPedido || '');
       setNotes(editingService.notes || '');
+    } else if (isNewServiceModalOpen) {
+      setSelectedClientId('');
+      setSolicitante('');
+      setTelefone('');
+      setWhatsapp('');
+      setCentroCusto('');
+      setServiceType('entrega');
+      setVehicleType('moto');
+      setSelectedDriverId('');
+      setServiceDate(todayDefault);
+      setServiceTime(nowTimeDefault);
+      setIsScheduled(false);
+      setCurrentStatus('aguardando');
+      setOriginAddress('');
+      setOriginContact('');
+      setDestAddress('');
+      setDestContact('');
+      setStopovers([]);
+      setDistanceKm(12.5);
+      setEstimatedTimeMin(25);
+      setTollValue(0);
+      setPriceCharged(150.00);
+      setDriverCost(98.00);
+      setCommission(15.00);
+      setNossoPedido('');
+      setNotes('');
     }
-  }, [editingService]);
+  }, [editingService, isNewServiceModalOpen]);
 
   // Pre-fill automatically when client is selected!
   useEffect(() => {
@@ -217,18 +258,21 @@ export const NewServiceModal: React.FC = () => {
     const profit = priceCharged - driverCost - commission - tollValue;
 
     // Determine status: If isScheduled is true, status is 'agendado'
-    const finalStatus = isScheduled 
-      ? 'agendado' 
-      : (driver ? 'despachado' : 'aguardando');
+    const finalStatus = editingService 
+      ? (isScheduled ? 'agendado' : currentStatus)
+      : (isScheduled ? 'agendado' : (driver ? 'despachado' : 'aguardando'));
 
     const servicePayload = {
+      date: serviceDate || todayDefault,
+      time: serviceTime || nowTimeDefault,
       serviceDate: serviceDate || todayDefault,
       serviceTime: serviceTime || nowTimeDefault,
       isScheduled,
       scheduledDate: isScheduled ? serviceDate : undefined,
       scheduledTime: isScheduled ? serviceTime : undefined,
+      status: finalStatus,
       clientId: selectedClientId,
-      clientName: client ? client.nomeFantasia : 'Cliente Não Informado',
+      clientName: client ? client.nomeFantasia : (editingService?.clientName || 'Cliente Não Informado'),
       solicitante: solicitante || (client?.responsavel || 'Operador'),
       telefone: telefone || (client?.telefone || ''),
       whatsapp: whatsapp || (client?.whatsapp || ''),
@@ -236,10 +280,10 @@ export const NewServiceModal: React.FC = () => {
       nossoPedido: nossoPedido.trim() || undefined,
       serviceType,
       vehicleType,
-      driverId: driver?.id,
-      driverName: driver?.nome,
-      driverPhoto: driver?.foto,
-      driverPhone: driver?.telefone,
+      driverId: driver?.id || undefined,
+      driverName: driver?.nome || undefined,
+      driverPhoto: driver?.foto || undefined,
+      driverPhone: driver?.telefone || undefined,
       origin: {
         address: originAddress || 'Origem Padrão Central',
         lat: originLat,
@@ -268,8 +312,6 @@ export const NewServiceModal: React.FC = () => {
     } else {
       createService({
         ...servicePayload,
-        date: serviceDate || todayDefault,
-        time: serviceTime || nowTimeDefault,
         status: finalStatus
       });
     }
@@ -503,6 +545,30 @@ export const NewServiceModal: React.FC = () => {
                 <span>
                   <strong>Serviço Agendado:</strong> Esta OS entrará com status <strong className="uppercase">AGENDADO</strong> para a data <strong>{serviceDate ? new Date(serviceDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</strong> às <strong>{serviceTime}</strong>.
                 </span>
+              </div>
+            )}
+
+            {editingService && !isScheduled && (
+              <div className="pt-2 border-t border-purple-200/40 dark:border-purple-800/30">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
+                  <Edit3 className="h-3.5 w-3.5 text-purple-500" />
+                  Status da Ordem de Serviço
+                </label>
+                <select
+                  value={currentStatus}
+                  onChange={(e) => setCurrentStatus(e.target.value as ServiceStatus)}
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl bg-white dark:bg-zinc-800 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                >
+                  <option value="agendado">0. Agendado</option>
+                  <option value="aguardando">1. Aguardando Aceite</option>
+                  <option value="despachado">2. Despachado</option>
+                  <option value="aceito">3. Motorista Aceitou</option>
+                  <option value="em_deslocamento">4. Em Deslocamento</option>
+                  <option value="coletado">5. Coletado</option>
+                  <option value="em_transito">6. Em Trânsito</option>
+                  <option value="entregue">7. Entregue</option>
+                  <option value="finalizado">8. Finalizado</option>
+                </select>
               </div>
             )}
           </div>

@@ -75,6 +75,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<ServiceOrder | null>(null);
   const [editingService, setEditingService] = useState<ServiceOrder | null>(null);
 
+  const handleSetEditingService = (service: ServiceOrder | null) => {
+    setEditingService(service);
+    if (service) {
+      setIsNewServiceModalOpen(true);
+    }
+  };
+
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('ibec_system_users');
     return saved ? JSON.parse(saved) : INITIAL_USERS;
@@ -760,7 +767,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedServiceForDetail,
         setSelectedServiceForDetail,
         editingService,
-        setEditingService,
+        setEditingService: handleSetEditingService,
         clients,
         drivers,
         vehicles,
