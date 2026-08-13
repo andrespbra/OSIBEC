@@ -37,6 +37,8 @@ interface AppContextType {
   setIsNewServiceModalOpen: (open: boolean) => void;
   selectedServiceForDetail: ServiceOrder | null;
   setSelectedServiceForDetail: (service: ServiceOrder | null) => void;
+  editingService: ServiceOrder | null;
+  setEditingService: (service: ServiceOrder | null) => void;
   
   clients: Client[];
   drivers: Driver[];
@@ -52,6 +54,7 @@ interface AppContextType {
   removeToast: (id: string) => void;
 
   createService: (newServiceData: Omit<ServiceOrder, 'id' | 'osNumber' | 'createdAt' | 'updatedAt' | 'timeline' | 'qrCode' | 'barcode' | 'trackingUrl'>) => ServiceOrder;
+  updateService: (serviceId: string, updatedData: Partial<ServiceOrder>) => void;
   updateServiceStatus: (serviceId: string, status: ServiceStatus, notes?: string, proofPhoto?: string, signature?: string, receivedByName?: string, receivedByDoc?: string) => void;
   deleteService: (serviceId: string) => void;
   addClient: (client: Omit<Client, 'id' | 'totalServices' | 'totalSpent' | 'createdAt'>) => void;
@@ -70,6 +73,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
   const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<ServiceOrder | null>(null);
+  const [editingService, setEditingService] = useState<ServiceOrder | null>(null);
 
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('ibec_system_users');
@@ -543,6 +547,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateService = (serviceId: string, updatedData: Partial<ServiceOrder>) => {
+    let updatedObj: ServiceOrder | null = null;
+
+    setServices(prev => prev.map(s => {
+      if (s.id === serviceId) {
+        const updated: ServiceOrder = {
+          ...s,
+          ...updatedData,
+          updatedAt: new Date().toISOString()
+        };
+        updatedObj = updated;
+        return updated;
+      }
+      return s;
+    }));
+
+    if (updatedObj) {
+      const target: ServiceOrder = updatedObj;
+
+      if (selectedServiceForDetail?.id === serviceId) {
+        setSelectedServiceForDetail(target);
+      }
+
+      setFinancial(prev => prev.map(f => {
+        if (f.osNumber === target.osNumber) {
+          return {
+            ...f,
+            clientName: target.clientName,
+            driverName: target.driverName,
+            amount: target.priceCharged,
+            netProfit: target.profit
+          };
+        }
+        return f;
+      }));
+
+      if (supabase) {
+        supabase.from('service_orders').update({
+          client_id: target.clientId,
+          client_name: target.clientName,
+          solicitante: target.solicitante,
+          telefone: target.telefone,
+          whatsapp: target.whatsapp,
+          centro_custo: target.centroCusto,
+          service_type: target.serviceType,
+          vehicle_type: target.vehicleType,
+          driver_id: target.driverId,
+          driver_name: target.driverName,
+          driver_phone: target.driverPhone,
+          status: target.status,
+          origin: target.origin,
+          destination: target.destination,
+          stopovers: target.stopovers,
+          distance_km: target.distanceKm,
+          estimated_time_min: target.estimatedTimeMin,
+          price_charged: target.priceCharged,
+          driver_cost: target.driverCost,
+          toll_value: target.tollValue,
+          commission: target.commission,
+          profit: target.profit,
+          nosso_pedido: target.nossoPedido,
+          notes: target.notes,
+          updated_at: new Date().toISOString()
+        }).eq('id', serviceId).then(({ error }) => {
+          if (error) console.log('Supabase service update error:', error.message);
+        });
+      }
+
+      logAudit('SERVICE_UPDATE', `Ordem de Serviço ${target.osNumber} alterada com sucesso.`);
+      addToast({
+        title: `OS ${target.osNumber} Alterada`,
+        description: 'Dados da Ordem de Serviço atualizados.',
+        type: 'success'
+      });
+    }
+  };
+
   const deleteService = (serviceId: string) => {
     const targetService = services.find(s => s.id === serviceId);
     const osNum = targetService ? targetService.osNumber : serviceId;
@@ -678,6 +759,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsNewServiceModalOpen,
         selectedServiceForDetail,
         setSelectedServiceForDetail,
+        editingService,
+        setEditingService,
         clients,
         drivers,
         vehicles,
@@ -690,6 +773,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addToast,
         removeToast,
         createService,
+        updateService,
         updateServiceStatus,
         deleteService,
         addClient,

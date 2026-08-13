@@ -12,11 +12,16 @@ interface ServiceDetailModalProps {
 }
 
 export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service, onClose }) => {
-  const { updateServiceStatus, deleteService, addToast } = useApp();
+  const { updateServiceStatus, deleteService, setEditingService, addToast } = useApp();
   const printRef = useRef<HTMLDivElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!service) return null;
+
+  const handleEdit = () => {
+    setEditingService(service);
+    onClose();
+  };
 
   const handleDelete = () => {
     deleteService(service.id);
@@ -84,6 +89,14 @@ export const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({ service,
             >
               <Share2 className="h-3.5 w-3.5" />
               <span>WhatsApp</span>
+            </button>
+            <button 
+              onClick={handleEdit}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Alterar dados da OS"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              <span>Editar OS</span>
             </button>
             <button 
               onClick={handlePrintVoucher}

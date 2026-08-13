@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   PackageCheck, Search, Filter, LayoutGrid, List, Plus, 
-  Clock, Calendar, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2, Trash2, AlertTriangle 
+  Clock, Calendar, MapPin, Truck, ChevronRight, Eye, CheckCircle2, Zap, Share2, Trash2, AlertTriangle, Edit3 
 } from 'lucide-react';
 import { ServiceOrder, ServiceStatus, VehicleType } from '../../types';
 import { ServiceDetailModal } from './ServiceDetailModal';
 
 export const ServiceListView: React.FC = () => {
-  const { services, setIsNewServiceModalOpen, updateServiceStatus, deleteService } = useApp();
+  const { services, setIsNewServiceModalOpen, updateServiceStatus, deleteService, setEditingService } = useApp();
 
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,9 +190,20 @@ export const ServiceListView: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setEditingService(s);
+                              }}
+                              className="p-1 rounded-lg text-zinc-400 hover:text-purple-500 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                              title="Alterar OS"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setServiceToDelete(s);
                               }}
-                              className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                               title="Excluir OS"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -292,6 +303,13 @@ export const ServiceListView: React.FC = () => {
                           title="Ver Detalhes"
                         >
                           <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingService(s)}
+                          className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                          title="Alterar OS"
+                        >
+                          <Edit3 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setServiceToDelete(s)}

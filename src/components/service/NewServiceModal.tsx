@@ -10,6 +10,7 @@ import { ServiceType, VehicleType, Waypoint } from '../../types';
 export const NewServiceModal: React.FC = () => {
   const { 
     isNewServiceModalOpen, setIsNewServiceModalOpen, 
+    editingService, setEditingService, updateService,
     clients, drivers, createService, addToast 
   } = useApp();
 
@@ -61,9 +62,43 @@ export const NewServiceModal: React.FC = () => {
     ? (selectedClient.nomeFantasia.toUpperCase().includes('KURZ') || selectedClient.razaoSocial.toUpperCase().includes('KURZ'))
     : false;
 
+  // Pre-fill when editing an existing service
+  useEffect(() => {
+    if (editingService) {
+      setSelectedClientId(editingService.clientId || '');
+      setSolicitante(editingService.solicitante || '');
+      setTelefone(editingService.telefone || '');
+      setWhatsapp(editingService.whatsapp || '');
+      setCentroCusto(editingService.centroCusto || '');
+      setServiceType(editingService.serviceType || 'entrega');
+      setVehicleType(editingService.vehicleType || 'moto');
+      setSelectedDriverId(editingService.driverId || '');
+      setServiceDate(editingService.serviceDate || todayDefault);
+      setServiceTime(editingService.serviceTime || nowTimeDefault);
+      setIsScheduled(editingService.isScheduled || false);
+      setOriginAddress(editingService.origin?.address || '');
+      setOriginContact(editingService.origin?.contact || '');
+      setOriginLat(editingService.origin?.lat || -23.5615);
+      setOriginLng(editingService.origin?.lng || -46.6559);
+      setDestAddress(editingService.destination?.address || '');
+      setDestContact(editingService.destination?.contact || '');
+      setDestLat(editingService.destination?.lat || -23.5874);
+      setDestLng(editingService.destination?.lng || -46.6789);
+      setStopovers(editingService.stopovers || []);
+      setDistanceKm(editingService.distanceKm || 12.5);
+      setEstimatedTimeMin(editingService.estimatedTimeMin || 25);
+      setTollValue(editingService.tollValue || 0);
+      setPriceCharged(editingService.priceCharged || 0);
+      setDriverCost(editingService.driverCost || 0);
+      setCommission(editingService.commission || 0);
+      setNossoPedido(editingService.nossoPedido || '');
+      setNotes(editingService.notes || '');
+    }
+  }, [editingService]);
+
   // Pre-fill automatically when client is selected!
   useEffect(() => {
-    if (selectedClientId) {
+    if (selectedClientId && !editingService) {
       const client = clients.find(c => c.id === selectedClientId);
       if (client) {
         setSolicitante(client.responsavel);
@@ -164,6 +199,11 @@ export const NewServiceModal: React.FC = () => {
     setStopovers(prev => prev.filter(s => s.id !== id));
   };
 
+  const handleCloseModal = () => {
+    setIsNewServiceModalOpen(false);
+    setEditingService(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClientId) {
@@ -181,9 +221,9 @@ export const NewServiceModal: React.FC = () => {
       ? 'agendado' 
       : (driver ? 'despachado' : 'aguardando');
 
-    createService({
-      date: serviceDate || todayDefault,
-      time: serviceTime || nowTimeDefault,
+    const servicePayload = {
+      serviceDate: serviceDate || todayDefault,
+      serviceTime: serviceTime || nowTimeDefault,
       isScheduled,
       scheduledDate: isScheduled ? serviceDate : undefined,
       scheduledTime: isScheduled ? serviceTime : undefined,
@@ -220,14 +260,25 @@ export const NewServiceModal: React.FC = () => {
       driverCost,
       commission,
       profit,
-      status: finalStatus,
       notes
-    });
+    };
 
-    setIsNewServiceModalOpen(false);
+    if (editingService) {
+      updateService(editingService.id, servicePayload);
+    } else {
+      createService({
+        ...servicePayload,
+        date: serviceDate || todayDefault,
+        time: serviceTime || nowTimeDefault,
+        status: finalStatus
+      });
+    }
+
+    handleCloseModal();
   };
 
-  if (!isNewServiceModalOpen) return null;
+  const isModalOpen = isNewServiceModalOpen || Boolean(editingService);
+  if (!isModalOpen) return null;
 
   const profit = priceCharged - driverCost - commission - tollValue;
   const profitMarginPercent = priceCharged > 0 ? Math.round((profit / priceCharged) * 100) : 0;
@@ -248,21 +299,21 @@ export const NewServiceModal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                  NOVO SERVIÇO DE TRANSPORTE
+                  {editingService ? `ALTERAR OS ${editingService.osNumber}` : 'NOVO SERVIÇO DE TRANSPORTE'}
                 </h2>
                 <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full border border-amber-500/20">
-                  Turbo &lt; 20s
+                  {editingService ? 'Edição Ativa' : 'Turbo < 20s'}
                 </span>
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Selecione o cliente para autopreencher tabela, centro de custo e contatos.
+                {editingService ? 'Altere as informações necessárias e clique em Salvar Alterações.' : 'Selecione o cliente para autopreencher tabela, centro de custo e contatos.'}
               </p>
             </div>
           </div>
 
           <button 
-            onClick={() => setIsNewServiceModalOpen(false)}
-            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            onClick={handleCloseModal}
+            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -767,17 +818,17 @@ export const NewServiceModal: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsNewServiceModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+                onClick={handleCloseModal}
+                className="px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 text-xs font-extrabold rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/30 flex items-center gap-2 active:scale-95 transition-all"
+                className="px-6 py-2.5 text-xs font-extrabold rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/30 flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
               >
                 <Zap className="h-4 w-4 text-amber-300" />
-                <span>CONFIRMAR & DESPACHAR</span>
+                <span>{editingService ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR & DESPACHAR'}</span>
               </button>
             </div>
           </div>
