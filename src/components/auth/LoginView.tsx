@@ -48,7 +48,7 @@ export const LoginView: React.FC = () => {
         </div>
 
         {/* Quick Demo Access Role Buttons */}
-        <div className="space-y-2">
+        /*<div className="space-y-2">
           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider text-center">
             Acesso Rápido para Demonstração:
           </p>
@@ -92,7 +92,7 @@ export const LoginView: React.FC = () => {
             🏢 Portal do Cliente Exclusivo
           </button>
         </div>
-
+*/
         <div className="relative flex py-1 items-center">
           <div className="flex-grow border-t border-zinc-800" />
           <span className="flex-shrink mx-4 text-[10px] text-zinc-500 font-bold uppercase">Ou Login com Usuário & Senha</span>
@@ -121,7 +121,7 @@ export const LoginView: React.FC = () => {
               required
               className="w-full px-4 py-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
-            <p className="text-[10px] text-zinc-500 mt-1">Exemplo admin padrão: <code className="text-purple-400 font-mono">admin</code></p>
+            /*<p className="text-[10px] text-zinc-500 mt-1">Exemplo admin padrão: <code className="text-purple-400 font-mono">admin</code></p>*/
           </div>
 
           <div>
@@ -137,7 +137,7 @@ export const LoginView: React.FC = () => {
               required
               className="w-full px-4 py-3 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
             />
-            <p className="text-[10px] text-zinc-500 mt-1">Senha padrão demo: <code className="text-purple-400 font-mono">123</code></p>
+           /* <p className="text-[10px] text-zinc-500 mt-1">Senha padrão demo: <code className="text-purple-400 font-mono">123</code></p>*/
           </div>
 
           <button
