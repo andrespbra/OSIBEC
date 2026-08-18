@@ -181,29 +181,73 @@ export async function clearOnlineData(): Promise<boolean> {
   }
 }
 
+export async function checkServerHealth(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
+}
+
+export async function fetchServerVersion(): Promise<{ status: string; lastUpdated: string; servicesCount: number } | null> {
+  try {
+    const res = await fetch('/api/version', { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
 /**
- * Real-time SSE Connection manager with auto-reconnect & status callbacks
+ * Resilient real-time synchronization manager with dual-channel (SSE + smart delta polling)
  */
 export function subscribeToLiveSync(
   onEvent: (event: LiveSyncEvent) => void,
   onStatusChange?: (isConnected: boolean) => void
 ): () => void {
   let eventSource: EventSource | null = null;
-  let reconnectTimeout: any = null;
+  let pollInterval: any = null;
   let isClosed = false;
+  let lastKnownUpdated: string = '';
 
-  const connect = () => {
+  // 1. Initial health verification
+  checkServerHealth().then((isHealthy) => {
+    if (!isClosed) {
+      onStatusChange?.(isHealthy);
+    }
+  });
+
+  // 2. EventSource connection setup
+  const connectSSE = () => {
     if (isClosed) return;
 
     try {
+      if (eventSource) {
+        eventSource.close();
+      }
+
       eventSource = new EventSource('/api/events');
 
       eventSource.onopen = () => {
-        onStatusChange?.(true);
+        if (!isClosed) onStatusChange?.(true);
+      };
+
+      eventSource.onmessage = (e) => {
+        if (!isClosed) onStatusChange?.(true);
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload && payload.type) {
+            onEvent(payload as LiveSyncEvent);
+          }
+        } catch (err) {
+          // ignore keepalive comments
+        }
       };
 
       eventSource.addEventListener('connected', () => {
-        onStatusChange?.(true);
+        if (!isClosed) onStatusChange?.(true);
       });
 
       eventSource.addEventListener('SERVICE_UPSERT', (e) => {
@@ -306,28 +350,51 @@ export function subscribeToLiveSync(
       });
 
       eventSource.onerror = () => {
-        onStatusChange?.(false);
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        if (!isClosed) {
-          reconnectTimeout = setTimeout(connect, 3000);
-        }
+        // When SSE drops, verify HTTP health before marking as offline
+        checkServerHealth().then((isHealthy) => {
+          if (!isClosed) {
+            onStatusChange?.(isHealthy);
+          }
+        });
       };
     } catch (err) {
-      onStatusChange?.(false);
-      if (!isClosed) {
-        reconnectTimeout = setTimeout(connect, 3000);
-      }
+      checkServerHealth().then((isHealthy) => {
+        if (!isClosed) onStatusChange?.(isHealthy);
+      });
     }
   };
 
-  connect();
+  connectSSE();
+
+  // 3. Fallback Smart Delta Poller (every 4 seconds)
+  pollInterval = setInterval(async () => {
+    if (isClosed) return;
+    try {
+      const ver = await fetchServerVersion();
+      if (ver) {
+        onStatusChange?.(true);
+        if (lastKnownUpdated && ver.lastUpdated && ver.lastUpdated !== lastKnownUpdated) {
+          // New data detected on another device, fetch delta
+          const freshData = await fetchAllOnlineData();
+          if (freshData) {
+            onEvent({ type: 'SYNC_ALL', data: freshData });
+          }
+        }
+        if (ver.lastUpdated) {
+          lastKnownUpdated = ver.lastUpdated;
+        }
+      } else {
+        const isHealthy = await checkServerHealth();
+        onStatusChange?.(isHealthy);
+      }
+    } catch (err) {
+      onStatusChange?.(false);
+    }
+  }, 4000);
 
   return () => {
     isClosed = true;
-    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    if (pollInterval) clearInterval(pollInterval);
     if (eventSource) {
       eventSource.close();
       eventSource = null;

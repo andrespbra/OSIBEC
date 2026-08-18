@@ -129,23 +129,27 @@ function broadcast(eventType: string, data: any) {
 
 // Real-Time SSE Stream Endpoint
 app.get('/api/events', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*'
+  });
 
-  // Send initial connection handshake
+  // Send initial connection handshake immediately
   res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', time: new Date().toISOString() })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'connected', time: new Date().toISOString() })}\n\n`);
 
   sseClients.push(res);
 
   const keepAliveInterval = setInterval(() => {
     try {
-      res.write(': keep-alive\n\n');
+      res.write(': keepalive\n\n');
     } catch (err) {
       clearInterval(keepAliveInterval);
     }
-  }, 20000);
+  }, 10000);
 
   req.on('close', () => {
     clearInterval(keepAliveInterval);
@@ -153,6 +157,15 @@ app.get('/api/events', (req: Request, res: Response) => {
     if (index !== -1) {
       sseClients.splice(index, 1);
     }
+  });
+});
+
+// Version & Last Updated timestamp endpoint for fast delta checking
+app.get('/api/version', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    lastUpdated: store.lastUpdated,
+    servicesCount: (store.services || []).length
   });
 });
 
