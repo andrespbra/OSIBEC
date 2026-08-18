@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   User, UserRole, Client, Driver, Vehicle, ServiceOrder, FinancialRecord, 
   AuditLog, AutomationLog, ServiceStatus, ServiceType, VehicleType 
@@ -10,6 +10,22 @@ import {
 } from '../data/initialData';
 
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import {
+  fetchAllOnlineData,
+  pushServiceOnline,
+  updateServiceOnline,
+  deleteServiceOnline,
+  pushClientOnline,
+  pushDriverOnline,
+  pushVehicleOnline,
+  pushFinancialOnline,
+  pushUserOnline,
+  deleteUserOnline,
+  resetOnlineData,
+  clearOnlineData,
+  subscribeToLiveSync,
+  DatabaseState
+} from '../lib/api';
 
 interface Toast {
   id: string;
@@ -49,6 +65,9 @@ interface AppContextType {
   automationLogs: AutomationLog[];
   toasts: Toast[];
   isSupabaseActive: boolean;
+  isLiveSyncConnected: boolean;
+  lastSyncTime: string;
+  manualRefreshData: () => Promise<void>;
 
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
@@ -74,6 +93,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
   const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<ServiceOrder | null>(null);
   const [editingService, setEditingService] = useState<ServiceOrder | null>(null);
+  const [isLiveSyncConnected, setIsLiveSyncConnected] = useState<boolean>(true);
+  const [lastSyncTime, setLastSyncTime] = useState<string>(new Date().toLocaleTimeString());
 
   const handleSetEditingService = (service: ServiceOrder | null) => {
     setEditingService(service);
@@ -129,6 +150,164 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('ibec_automations');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Keep a ref to current selectedServiceForDetail for real-time detail syncing
+  const selectedServiceRef = useRef<ServiceOrder | null>(selectedServiceForDetail);
+  selectedServiceRef.current = selectedServiceForDetail;
+
+  // -------------------------------------------------------------
+  // MULTI-DEVICE ONLINE SYNCHRONIZATION ENGINE
+  // -------------------------------------------------------------
+
+  const applyRemoteState = (data: DatabaseState) => {
+    if (data.services) setServices(data.services);
+    if (data.clients) setClients(data.clients);
+    if (data.drivers) setDrivers(data.drivers);
+    if (data.vehicles) setVehicles(data.vehicles);
+    if (data.financial) setFinancial(data.financial);
+    if (data.auditLogs) setAuditLogs(data.auditLogs);
+    if (data.automationLogs) setAutomationLogs(data.automationLogs);
+    if (data.users && data.users.length > 0) setUsers(data.users);
+    setLastSyncTime(new Date().toLocaleTimeString());
+  };
+
+  const manualRefreshData = async () => {
+    const online = await fetchAllOnlineData();
+    if (online) {
+      applyRemoteState(online);
+    }
+  };
+
+  // Initial load from server + real-time subscriptions
+  useEffect(() => {
+    // 1. Initial full fetch
+    fetchAllOnlineData().then(onlineData => {
+      if (onlineData) {
+        applyRemoteState(onlineData);
+      }
+    });
+
+    // 2. Real-time SSE listener
+    const unsubscribe = subscribeToLiveSync(
+      (event) => {
+        setLastSyncTime(new Date().toLocaleTimeString());
+        
+        switch (event.type) {
+          case 'SERVICE_UPSERT':
+            setServices(prev => {
+              const idx = prev.findIndex(s => s.id === event.service.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.service;
+                return updated;
+              }
+              return [event.service, ...prev];
+            });
+            if (selectedServiceRef.current && selectedServiceRef.current.id === event.service.id) {
+              setSelectedServiceForDetail(event.service);
+            }
+            break;
+
+          case 'SERVICE_DELETE':
+            setServices(prev => prev.filter(s => s.id !== event.id));
+            if (selectedServiceRef.current && selectedServiceRef.current.id === event.id) {
+              setSelectedServiceForDetail(null);
+            }
+            break;
+
+          case 'CLIENT_UPSERT':
+            setClients(prev => {
+              const idx = prev.findIndex(c => c.id === event.client.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.client;
+                return updated;
+              }
+              return [event.client, ...prev];
+            });
+            break;
+
+          case 'DRIVER_UPSERT':
+            setDrivers(prev => {
+              const idx = prev.findIndex(d => d.id === event.driver.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.driver;
+                return updated;
+              }
+              return [event.driver, ...prev];
+            });
+            break;
+
+          case 'VEHICLE_UPSERT':
+            setVehicles(prev => {
+              const idx = prev.findIndex(v => v.id === event.vehicle.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.vehicle;
+                return updated;
+              }
+              return [event.vehicle, ...prev];
+            });
+            break;
+
+          case 'FINANCIAL_UPSERT':
+            setFinancial(prev => {
+              const idx = prev.findIndex(f => f.id === event.record.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.record;
+                return updated;
+              }
+              return [event.record, ...prev];
+            });
+            break;
+
+          case 'USER_UPSERT':
+            setUsers(prev => {
+              const idx = prev.findIndex(u => u.id === event.user.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = event.user;
+                return updated;
+              }
+              return [...prev, event.user];
+            });
+            break;
+
+          case 'USER_DELETE':
+            setUsers(prev => prev.filter(u => u.id !== event.id));
+            break;
+
+          case 'SYNC_ALL':
+          case 'DATA_RESET':
+          case 'DATA_CLEAR':
+            if (event.data) applyRemoteState(event.data);
+            break;
+        }
+      },
+      (isConnected) => {
+        setIsLiveSyncConnected(isConnected);
+      }
+    );
+
+    // 3. Auto-sync on window focus (guarantees fresh data when user switches tabs or returns)
+    const handleFocus = () => {
+      manualRefreshData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // 4. Periodic heartbeat refresh every 15 seconds
+    const interval = setInterval(() => {
+      manualRefreshData();
+    }, 15000);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Sync users & currentUser to local storage
   useEffect(() => {
@@ -279,6 +458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setUsers(prev => [newUser, ...prev]);
+    pushUserOnline(newUser);
 
     if (supabase) {
       supabase.from('users').insert([{
@@ -304,7 +484,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUser = (userId: string, updatedFields: Partial<User>) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updatedFields } : u));
+    let updatedObj: User | null = null;
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const updated = { ...u, ...updatedFields };
+        updatedObj = updated;
+        return updated;
+      }
+      return u;
+    }));
+
+    if (updatedObj) {
+      pushUserOnline(updatedObj);
+    }
+
+    if (currentUser?.id === userId) {
+      setCurrentUser(prev => prev ? { ...prev, ...updatedFields } : null);
+    }
 
     if (supabase) {
       supabase.from('users').update({
@@ -325,6 +521,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
+    deleteUserOnline(userId);
 
     if (supabase) {
       supabase.from('users').delete().eq('id', userId).then(({ error }) => {
@@ -408,14 +605,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setServices(prev => [newService, ...prev]);
 
+    // Push new service to online backend server for real-time multi-computer sync
+    pushServiceOnline(newService);
+
     // Update client stats
     setClients(prev => prev.map(c => {
       if (c.id === newService.clientId) {
-        return {
+        const updatedClient = {
           ...c,
           totalServices: c.totalServices + 1,
           totalSpent: c.totalSpent + newService.priceCharged
         };
+        pushClientOnline(updatedClient);
+        return updatedClient;
       }
       return c;
     }));
@@ -424,11 +626,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (newService.driverId) {
       setDrivers(prev => prev.map(d => {
         if (d.id === newService.driverId) {
-          return {
+          const updatedDriver = {
             ...d,
-            status: 'em_atendimento',
+            status: 'em_atendimento' as const,
             activeServiceId: newService.id
           };
+          pushDriverOnline(updatedDriver);
+          return updatedDriver;
         }
         return d;
       }));
@@ -450,6 +654,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       centroCusto: newService.centroCusto
     };
     setFinancial(prev => [newFin, ...prev]);
+    pushFinancialOnline(newFin);
 
     logAudit('SERVICE_CREATE', `Novo serviço ${osNumber} registrado para o cliente ${newService.clientName}`);
     triggerAutomations(osNumber, 'Novo Serviço Registrado', newService.whatsapp, newService.driverPhone);
@@ -508,18 +713,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (updatedService) {
       const target: ServiceOrder = updatedService;
+
+      // Push updated status to online server
+      updateServiceOnline(serviceId, target);
+
       // If completed or finalized, release driver and update financial driver payout
       if (status === 'entregue' || status === 'finalizado') {
         if (target.driverId) {
           setDrivers(prev => prev.map(d => {
             if (d.id === target.driverId) {
-              return {
+              const updatedDrv = {
                 ...d,
-                status: 'disponivel',
+                status: 'disponivel' as const,
                 activeServiceId: undefined,
                 completedToday: d.completedToday + 1,
                 totalKmToday: d.totalKmToday + target.distanceKm
               };
+              pushDriverOnline(updatedDrv);
+              return updatedDrv;
             }
             return d;
           }));
@@ -540,6 +751,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             osNumber: target.osNumber
           };
           setFinancial(prev => [driverFin, ...prev]);
+          pushFinancialOnline(driverFin);
         }
       }
 
@@ -579,44 +791,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setFinancial(prev => prev.map(f => {
         if (f.osNumber === target.osNumber) {
-          return {
+          const updatedFin = {
             ...f,
             clientName: target.clientName,
             driverName: target.driverName,
             amount: target.priceCharged,
             netProfit: target.profit
           };
+          pushFinancialOnline(updatedFin);
+          return updatedFin;
         }
         return f;
       }));
 
+      // Push update to backend server for online multi-device broadcast
+      updateServiceOnline(serviceId, target);
+
       if (supabase) {
         supabase.from('service_orders').update({
-          client_id: target.clientId,
           client_name: target.clientName,
-          solicitante: target.solicitante,
-          telefone: target.telefone,
-          whatsapp: target.whatsapp,
-          centro_custo: target.centroCusto,
           service_type: target.serviceType,
           vehicle_type: target.vehicleType,
-          driver_id: target.driverId,
-          driver_name: target.driverName,
-          driver_phone: target.driverPhone,
           status: target.status,
-          origin: target.origin,
-          destination: target.destination,
-          stopovers: target.stopovers,
-          distance_km: target.distanceKm,
-          estimated_time_min: target.estimatedTimeMin,
-          price_charged: target.priceCharged,
-          driver_cost: target.driverCost,
-          toll_value: target.tollValue,
-          commission: target.commission,
-          profit: target.profit,
-          nosso_pedido: target.nossoPedido,
-          notes: target.notes,
-          updated_at: new Date().toISOString()
+          price_charged: target.priceCharged
         }).eq('id', serviceId).then(({ error }) => {
           if (error) console.log('Supabase service update error:', error.message);
         });
@@ -642,6 +839,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedServiceForDetail(null);
     }
 
+    deleteServiceOnline(serviceId);
+
     if (supabase) {
       supabase.from('service_orders').delete().eq('id', serviceId).then(({ error }) => {
         if (error) console.log('Supabase service delete error:', error.message);
@@ -665,6 +864,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString()
     };
     setClients(prev => [newClient, ...prev]);
+    pushClientOnline(newClient);
     logAudit('CLIENT_CREATE', `Cliente ${newClient.nomeFantasia} cadastrado.`);
     addToast({ title: 'Cliente Cadastrado', description: newClient.nomeFantasia, type: 'success' });
   };
@@ -677,6 +877,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalKmToday: 0
     };
     setDrivers(prev => [newDriver, ...prev]);
+    pushDriverOnline(newDriver);
     logAudit('DRIVER_CREATE', `Motorista ${newDriver.nome} cadastrado.`);
     addToast({ title: 'Motorista Cadastrado', description: newDriver.nome, type: 'success' });
   };
@@ -687,6 +888,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `veh-${Date.now()}`
     };
     setVehicles(prev => [newVehicle, ...prev]);
+    pushVehicleOnline(newVehicle);
     logAudit('VEHICLE_CREATE', `Veículo ${newVehicle.modelo} (${newVehicle.placa}) cadastrado.`);
     addToast({ title: 'Veículo Cadastrado', description: `${newVehicle.modelo} - ${newVehicle.placa}`, type: 'success' });
   };
@@ -697,12 +899,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `fin-${Date.now()}`
     };
     setFinancial(prev => [newRec, ...prev]);
+    pushFinancialOnline(newRec);
     logAudit('FINANCIAL_CREATE', `Lançamento financeiro ${newRec.description} de R$ ${newRec.amount.toFixed(2)}`);
     addToast({ title: 'Lançamento Financeiro Criado', description: newRec.description, type: 'success' });
   };
 
   const updateDriverStatus = (driverId: string, status: Driver['status']) => {
-    setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, status } : d));
+    setDrivers(prev => prev.map(d => {
+      if (d.id === driverId) {
+        const updated = { ...d, status };
+        pushDriverOnline(updated);
+        return updated;
+      }
+      return d;
+    }));
     logAudit('DRIVER_STATUS_CHANGE', `Motorista ID ${driverId} alterou status para ${status}`);
   };
 
@@ -723,6 +933,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuditLogs([]);
     setAutomationLogs([]);
     setUsers(INITIAL_USERS);
+    clearOnlineData();
     addToast({ title: 'Dados Zerados', description: 'Todos os dados de demonstração foram limpos. Seu banco está pronto para novos cadastros realistas!', type: 'warning' });
   };
 
@@ -743,6 +954,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuditLogs(INITIAL_AUDIT);
     setAutomationLogs(INITIAL_AUTOMATIONS);
     setUsers(INITIAL_USERS);
+    resetOnlineData();
     addToast({ title: 'Dados Demo Restaurados', description: 'O banco de dados de teste foi restaurado com sucesso.', type: 'info' });
   };
 
@@ -777,6 +989,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         automationLogs,
         toasts,
         isSupabaseActive: isSupabaseConfigured(),
+        isLiveSyncConnected,
+        lastSyncTime,
+        manualRefreshData,
         addToast,
         removeToast,
         createService,

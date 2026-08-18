@@ -2,18 +2,27 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Zap, Plus, Sun, Moon, Bell, Search, Shield, UserCheck, 
-  Truck, DollarSign, Activity, Users, ChevronDown, CheckCircle2, AlertTriangle, X, LogOut 
+  Truck, DollarSign, Activity, Users, ChevronDown, CheckCircle2, AlertTriangle, X, LogOut,
+  RefreshCw, Wifi, WifiOff
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
 export const Header: React.FC = () => {
   const { 
     currentUser, setRole, theme, toggleTheme, 
-    setIsNewServiceModalOpen, services, drivers, toasts, removeToast, logout 
+    setIsNewServiceModalOpen, services, drivers, toasts, removeToast, logout,
+    isLiveSyncConnected, lastSyncTime, manualRefreshData
   } = useApp();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await manualRefreshData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const rolesList: { role: UserRole; label: string; icon: any; color: string }[] = [
     { role: 'admin', label: 'Administrador (Acesso Total)', icon: Shield, color: 'text-purple-500 bg-purple-500/10' },
@@ -77,6 +86,32 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span>{onlineDriversCount} Motoristas Online</span>
+          </div>
+
+          {/* Real-time Multi-Device Sync Indicator */}
+          <div 
+            title={`Sincronização Online em Tempo Real ativa. Última atualização: ${lastSyncTime}`}
+            className={`flex items-center gap-2 text-xs font-semibold px-2.5 py-1.5 rounded-xl border transition-all ${
+              isLiveSyncConnected 
+                ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/50 text-blue-700 dark:text-blue-300' 
+                : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300'
+            }`}
+          >
+            {isLiveSyncConnected ? (
+              <Wifi className="h-3.5 w-3.5 text-blue-500 animate-pulse" />
+            ) : (
+              <WifiOff className="h-3.5 w-3.5 text-amber-500" />
+            )}
+            <span className="hidden xl:inline">
+              {isLiveSyncConnected ? 'Online (Tempo Real)' : 'Reconectando...'}
+            </span>
+            <button 
+              onClick={handleRefresh}
+              title="Forçar sincronização com a nuvem"
+              className="p-0.5 rounded hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 cursor-pointer"
+            >
+              <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 
